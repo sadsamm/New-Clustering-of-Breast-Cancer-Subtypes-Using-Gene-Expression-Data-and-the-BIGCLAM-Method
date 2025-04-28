@@ -17,10 +17,21 @@
 ### Requirements  
 - Python 3.10+  
 - PyTorch (with CUDA for GPU support)  
-- numpy, pandas, json, pickle, networkx, seaborn, scikit-learn, scanpy, matplotlib  
+- numpy, pandas, json, pickle, networkx, seaborn, scikit-learn, matplotlib  
 
 ### Usage  
 1. Download GSE96058 data from GEO and place in `/content/drive/MyDrive/gene_expression_data_target_added.csv`.  
-2. Run the pipeline:  
-```bash  
-python run_pipeline.py --gpu --dataset GSE96058
+2. Run the code
+
+## Project Inspiration
+This project builds on the methodology from the original BIGCLAM paper:
+Community Affiliation Model for Big Networks (Leskovec et al., 2013).
+
+## Contributing
+Contributions are welcome! If you have suggestions or find issues, please open an issue or submit a pull request.
+
+## License
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Acknowledgements
+Special thanks to my supervisors Dr. Mohammad Teshnehlab and Dr. Saeed Pirmoradi for their guidance and support.
