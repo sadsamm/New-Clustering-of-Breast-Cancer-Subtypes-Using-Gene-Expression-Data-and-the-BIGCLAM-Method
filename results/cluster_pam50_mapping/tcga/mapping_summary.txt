@@ -1,0 +1,30 @@
+Cluster-PAM50 Mapping Summary: TCGA
+================================================================================
+
+NMI vs PAM50: 0.0053
+ARI vs PAM50: -0.0033
+Number of BIGCLAM clusters: 5
+Number of PAM50 types: 5
+
+Cluster Details:
+--------------------------------------------------------------------------------
+
+Cluster 0 (n=99):
+  Dominant PAM50: Luminal A (46.5%)
+  Mixed subtypes: Luminal A: 46 (46.5%), Luminal B: 22 (22.2%), Basal-like: 20 (20.2%), HER2-enriched: 9 (9.1%), Normal-like: 2 (2.0%)
+
+Cluster 1 (n=99):
+  Dominant PAM50: Luminal A (43.4%)
+  Mixed subtypes: Luminal A: 43 (43.4%), Luminal B: 27 (27.3%), Basal-like: 18 (18.2%), HER2-enriched: 9 (9.1%), Normal-like: 2 (2.0%)
+
+Cluster 2 (n=98):
+  Dominant PAM50: Luminal A (46.9%)
+  Mixed subtypes: Luminal A: 46 (46.9%), Luminal B: 25 (25.5%), Basal-like: 16 (16.3%), HER2-enriched: 10 (10.2%), Normal-like: 1 (1.0%)
+
+Cluster 3 (n=111):
+  Dominant PAM50: Luminal A (46.0%)
+  Mixed subtypes: Luminal A: 51 (45.9%), Basal-like: 24 (21.6%), Luminal B: 22 (19.8%), HER2-enriched: 12 (10.8%), Normal-like: 2 (1.8%)
+
+Cluster 4 (n=113):
+  Dominant PAM50: Luminal A (39.8%)
+  Mixed subtypes: Luminal A: 45 (39.8%), Luminal B: 31 (27.4%), HER2-enriched: 18 (15.9%), Basal-like: 18 (15.9%), Normal-like: 1 (0.9%)

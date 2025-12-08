@@ -1,0 +1,6 @@
+cluster,n_samples,dominant_pam50,dominant_pct,n_pam50_types,pam50_distribution
+0,99,Luminal A,46.46,5,"Luminal A: 46 (46.5%), Luminal B: 22 (22.2%), Basal-like: 20 (20.2%), HER2-enriched: 9 (9.1%), Normal-like: 2 (2.0%)"
+1,99,Luminal A,43.43,5,"Luminal A: 43 (43.4%), Luminal B: 27 (27.3%), Basal-like: 18 (18.2%), HER2-enriched: 9 (9.1%), Normal-like: 2 (2.0%)"
+2,98,Luminal A,46.94,5,"Luminal A: 46 (46.9%), Luminal B: 25 (25.5%), Basal-like: 16 (16.3%), HER2-enriched: 10 (10.2%), Normal-like: 1 (1.0%)"
+3,111,Luminal A,45.95,5,"Luminal A: 51 (45.9%), Basal-like: 24 (21.6%), Luminal B: 22 (19.8%), HER2-enriched: 12 (10.8%), Normal-like: 2 (1.8%)"
+4,113,Luminal A,39.82,5,"Luminal A: 45 (39.8%), Luminal B: 31 (27.4%), HER2-enriched: 18 (15.9%), Basal-like: 18 (15.9%), Normal-like: 1 (0.9%)"

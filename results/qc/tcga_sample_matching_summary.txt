@@ -1,0 +1,13 @@
+Sample Matching QC Summary: TCGA
+================================================================================
+
+Dataset: tcga
+Expression samples: 532
+Clinical samples: 0
+Matched samples: 0
+Unmatched expression: 532
+Unmatched clinical: 0
+Matching rate: 0.00%
+Matching method: positional
+Validation method: hash_signature
+Validation status: warning
