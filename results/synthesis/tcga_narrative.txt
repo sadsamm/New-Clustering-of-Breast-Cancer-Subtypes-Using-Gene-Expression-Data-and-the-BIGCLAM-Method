@@ -1,0 +1,18 @@
+# Results Summary: TCGA
+
+BIGCLAM identified 5 distinct molecular subtypes.
+
+
+## Cluster 0 (n=101)
+
+## Cluster 1 (n=102)
+
+## Cluster 2 (n=100)
+
+## Cluster 3 (n=113)
+
+## Cluster 4 (n=116)
+
+
+## Overall Performance
+**PAM50 Alignment**: NMI=0.005, ARI=-0.003

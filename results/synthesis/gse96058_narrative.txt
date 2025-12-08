@@ -1,38 +1,46 @@
 # Results Summary: GSE96058
 
-BIGCLAM identified 5 distinct molecular subtypes.
+BIGCLAM identified 6 distinct molecular subtypes.
 
 
-## Cluster 0 (n=806)
+## Cluster 0 (n=578)
 
-**Highly Expressed Genes**: DQ584545, TRNA_Pseudo, DQ598345, SNORD60, DQ576791
+**Highly Expressed Genes**: DQ598345, SNORD81, MIR6748, U7, DQ584698
 
-**Enriched Signatures**: luminal_hormonal, proliferation
+**Enriched Signatures**: luminal_hormonal
 
-**Enriched Pathways**: MicroRNAs in cancer
+**Enriched Pathways**: positive regulation of DNA-binding transcription factor activity (GO:0051091), positive regulation of transcription by RNA polymerase II (GO:0045944), positive regulation of transcription, DNA-templated (GO:0045893)
 
-## Cluster 1 (n=604)
+## Cluster 1 (n=426)
 
-**Highly Expressed Genes**: DM110804, M26316, HM467897, DQ576862, JA611306
+**Highly Expressed Genes**: JC037706, DQ586951, SNORD58C, SNORD79, MIR6727
 
-## Cluster 2 (n=546)
+**Enriched Pathways**: negative regulation of retinoic acid receptor signaling pathway (GO:0048387), cardiac left ventricle morphogenesis (GO:0003214), regulation of retinoic acid receptor signaling pathway (GO:0048385)
 
-**Highly Expressed Genes**: DQ598167, DQ582231, DQ576856, MIR6869, MIR6819
+## Cluster 2 (n=569)
 
-## Cluster 3 (n=891)
+**Highly Expressed Genes**: MIR6087, DQ580250, DQ598167, TRNA_Val, HM467897
 
-**Highly Expressed Genes**: septin 9/TNRC6C fusion, D64149, MIR4459, M37726, DQ598167
+**Enriched Signatures**: emt
 
-**Enriched Signatures**: immune_infiltration, emt
+## Cluster 3 (n=430)
 
-## Cluster 4 (n=562)
+**Highly Expressed Genes**: DQ586951, DQ597999, DQ584698, U7, MIR6759
 
-**Highly Expressed Genes**: TRNA_Val, SNORD32A, septin 9/TNRC6C fusion, DQ586951, JC002043
+## Cluster 4 (n=777)
 
-**Enriched Signatures**: basal_like
+**Highly Expressed Genes**: D64149, SNORA22, Mir_584, MIRLET7I, MIR1273F
 
-**Enriched Pathways**: cellular phosphate ion homeostasis (GO:0030643), cellular trivalent inorganic anion homeostasis (GO:0072502), phosphate ion homeostasis (GO:0055062)
+**Enriched Signatures**: basal_like, proliferation
+
+## Cluster 5 (n=629)
+
+**Highly Expressed Genes**: septin 9/TNRC6C fusion, DQ584698, DQ590318, SCGB2A2, CYP4Z1
+
+**Enriched Signatures**: emt, angiogenesis
+
+**Enriched Pathways**: negative regulation of T cell apoptotic process (GO:0070233), ketone body biosynthetic process (GO:0046951), negative regulation of lymphocyte apoptotic process (GO:0070229)
 
 
 ## Overall Performance
-**PAM50 Alignment**: NMI=0.001, ARI=-0.001
+**PAM50 Alignment**: NMI=0.001, ARI=-0.000
