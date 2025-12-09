@@ -83,19 +83,7 @@ python -c "from src.visualization.paper_figures import create_figure4_stability_
 
 ## Supplementary Figures
 
-### Supplementary Figure S1: Grid Search Diagnostics
-**File:** `SuppFigS1_gridsearch_{dataset}.png`  
-**Content:** Edge count, density, average degree vs similarity threshold. Shows recommended threshold with dotted line.
-
-**How to generate:**
-```bash
-python run_all.py --steps grid_search
-# Outputs: results/grid_search/{dataset}_grid_search_*.png
-```
-
----
-
-### Supplementary Figure S2: BIGCLAM Model Selection
+### Supplementary Figure S1: BIGCLAM Model Selection
 **File:** `SuppFigS2_model_selection_{dataset}.png`  
 **Content:** AIC/BIC vs number of communities (C) and convergence traces (log-likelihood vs epoch).
 
@@ -179,9 +167,6 @@ python src/visualization/paper_figures.py
 
 ### Generate All Supplementary Figures
 ```bash
-# Grid search diagnostics
-python run_all.py --steps grid_search
-
 # Extended method comparison
 python run_all.py --steps method_comparison
 

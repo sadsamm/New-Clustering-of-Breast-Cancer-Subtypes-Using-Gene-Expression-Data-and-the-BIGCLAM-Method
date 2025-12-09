@@ -33,68 +33,16 @@ from src.evaluation import evaluate_all_datasets, survival_evaluation
 from src.evaluation.survival_evaluator import load_tcga_clinical, load_gse96058_clinical
 from src.visualization import create_all_visualizations
 from src.interpretation import interpret_results, analyze_overlap, biological_interpretation_pipeline
-from src.analysis import analyze_cross_dataset_consistency, run_grid_search
+from src.analysis import analyze_cross_dataset_consistency
 from src.analysis.comprehensive_method_comparison import compare_all_methods
 from src.classifiers import validate_clustering_with_classifiers
 from src.preprocessing.sample_matching_qc import create_sample_matching_qc
 from src.analysis.cluster_stability import run_cluster_stability_analysis
-from src.analysis.parameter_grid_search import generate_precise_range
 
 def load_config(config_path='config/config.yml'):
     """Load configuration from YAML file."""
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
-
-
-def get_optimal_similarity_from_grid_search(dataset_name_key, short_name, config, config_path, output_dir='results/grid_search'):
-    """
-    Run or reuse parameter grid search to obtain the best similarity threshold
-    for a given dataset, based on ARI/NMI/purity/F1 and community-count heuristics.
-    
-    Args:
-        dataset_name_key: Long dataset name used in filenames, e.g. 'tcga_brca_data'
-        short_name: Short dataset key used in config, e.g. 'tcga' or 'gse96058'
-        config: Loaded YAML config dict
-        config_path: Path to config file (string)
-        output_dir: Directory where grid search results are stored
-    
-    Returns:
-        float or None: Selected similarity threshold, or None if grid search fails
-    """
-    dataset_prep_cfg = config.get('dataset_preparation', {})
-    grid_cfg = config.get('grid_search', {})
-    
-    ds_prep = dataset_prep_cfg.get(short_name, {})
-    input_file = ds_prep.get('output')
-    if not input_file or not Path(input_file).exists():
-        print(f"[WARNING] Grid search skipped for {dataset_name_key}: input file not found ({input_file})")
-        return None
-    
-    ds_grid = grid_cfg.get(short_name, {})
-    sim_range = list(generate_precise_range(
-        ds_grid.get('similarity_start', 0.1),
-        ds_grid.get('similarity_end', 0.9),
-        ds_grid.get('similarity_step', 0.05)
-    ))
-    
-    print(f"\n[Grid Search] Auto-running for {dataset_name_key} to select similarity threshold...")
-    results = run_grid_search(
-        dataset_name_key,
-        input_file,
-        sim_range,
-        config_path,
-        output_dir
-    )
-    
-    if results and isinstance(results, dict):
-        best_cfg = results.get('best_config', {})
-        if 'similarity_threshold' in best_cfg:
-            best_sim = float(best_cfg['similarity_threshold'])
-            print(f"[Grid Search] Selected similarity for {dataset_name_key}: {best_sim}")
-            return best_sim
-    
-    print(f"[WARNING] Grid search did not return a best similarity for {dataset_name_key}")
-    return None
 
 
 def main():
@@ -106,7 +54,7 @@ def main():
     parser.add_argument('--skip_classification', action='store_true', help='Skip classification validation')
     parser.add_argument('--steps', nargs='+', choices=[
         'preprocess', 'graph', 'cluster', 'evaluate', 
-        'visualize', 'interpret', 'biological_interpretation', 'cross_dataset', 'classify', 'grid_search', 'survival', 'method_comparison',
+        'visualize', 'interpret', 'biological_interpretation', 'cross_dataset', 'classify', 'survival', 'method_comparison',
         'cluster_pam50_mapping', 'results_synthesis', 'sample_matching_qc', 'cluster_stability'
     ], help='Run specific steps only')
     
@@ -126,102 +74,6 @@ def main():
         steps_to_run = ['preprocess', 'graph', 'cluster', 'evaluate', 
                        'visualize', 'interpret', 'biological_interpretation', 'cross_dataset', 'classify', 'survival', 'method_comparison',
                        'cluster_pam50_mapping', 'results_synthesis', 'sample_matching_qc', 'cluster_stability']
-    
-    # Special case: grid_search runs its own pipeline (starts from data_preprocessing.py)
-    # NOTE: Grid search ONLY uses prepared CSV files (*_target_added.csv) as input.
-    #       It expects prepared CSV files to already exist (data preparation is a separate step).
-    #       Grid search starts with preprocessing: it takes the prepared CSV and runs preprocess_data()
-    if 'grid_search' in steps_to_run:
-        print("\n" + "="*80)
-        print("RUNNING PARAMETER GRID SEARCH")
-        print("="*80)
-        print("\nNOTE: Grid search uses ONLY prepared CSV files (*_target_added.csv)")
-        print("      It does NOT access raw clinical/expression files.")
-        print("      Pipeline: *_target_added.csv -> preprocess_data() -> graph -> cluster -> evaluate")
-        print("      Data preparation (data_preparing.py) is NOT run here.\n")
-        
-        dataset_config = config.get('dataset_preparation', {})
-        grid_search_config = config.get('grid_search', {})
-        
-        # TCGA BRCA Grid Search
-        # Use ONLY the prepared CSV file (output from data_preparing.py)
-        # This is the file with targets already added: tcga_brca_data_target_added.csv
-        tcga_config = dataset_config.get('tcga', {})
-        tcga_input_file = tcga_config.get('output') if tcga_config else None  # This is the *_target_added.csv file
-        
-        if tcga_input_file and Path(tcga_input_file).exists():
-            print("\n[Grid Search] TCGA-BRCA")
-            print(f"    Input file (prepared CSV with targets): {tcga_input_file}")
-            print(f"    This file will be processed by data_preprocessing.py")
-            
-            # Generate similarity sweep from config (variance is fixed to dataset mean)
-            tcga_grid = grid_search_config.get('tcga', {})
-            from src.analysis.parameter_grid_search import generate_precise_range
-            tcga_sim_range = list(generate_precise_range(
-                tcga_grid.get('similarity_start', 0.1),
-                tcga_grid.get('similarity_end', 0.9),
-                tcga_grid.get('similarity_step', 0.05)
-            ))
-            
-            run_grid_search(
-                'tcga_brca_data',
-                tcga_input_file,  # This is the prepared CSV, not raw clinical/expression files
-                tcga_sim_range,
-                args.config,
-                'results/grid_search'
-            )
-            
-            # Clear memory before loading GSE data (important for limited RAM)
-            print("\n[Memory] Clearing TCGA data from RAM before loading GSE data...")
-            from src.analysis.parameter_grid_search import clear_memory
-            clear_memory()
-            print("[Memory] Cleanup complete. Ready for GSE96058.\n")
-        else:
-            print(f"\n[SKIP] TCGA-BRCA grid search - prepared CSV file not found:")
-            print(f"       Expected: {tcga_input_file}")
-            print(f"       This should be a prepared CSV file (with _target_added suffix)")
-            print(f"       Run data preparation separately if needed: python -m src.preprocessing.data_preparing")
-        
-        # GSE96058 Grid Search
-        # Use ONLY the prepared CSV file (output from data_preparing.py)
-        # This is the file with targets already added: gse96058_data_target_added.csv
-        gse_config = dataset_config.get('gse96058', {})
-        gse_input_file = gse_config.get('output') if gse_config else None  # This is the *_target_added.csv file
-        
-        if gse_input_file and Path(gse_input_file).exists():
-            print("\n[Grid Search] GSE96058")
-            print(f"    Input file (prepared CSV with targets): {gse_input_file}")
-            print(f"    This file will be processed by data_preprocessing.py")
-            
-            # Generate similarity sweep from config (variance is fixed to dataset mean)
-            gse_grid = grid_search_config.get('gse96058', {})
-            from src.analysis.parameter_grid_search import generate_precise_range
-            gse_sim_range = list(generate_precise_range(
-                gse_grid.get('similarity_start', 0.1),
-                gse_grid.get('similarity_end', 0.9),
-                gse_grid.get('similarity_step', 0.05)
-            ))
-            
-            run_grid_search(
-                'gse96058_data',
-                gse_input_file,  # This is the prepared CSV, not raw clinical/expression files
-                gse_sim_range,
-                args.config,
-                'results/grid_search'
-            )
-        else:
-            print(f"\n[SKIP] GSE96058 grid search - prepared CSV file not found:")
-            print(f"       Expected: {gse_input_file}")
-            print(f"       This should be a prepared CSV file (with _target_added suffix)")
-            print(f"       Run data preparation separately if needed: python -m src.preprocessing.data_preparing")
-        
-        print("\n" + "="*80)
-        print("GRID SEARCH COMPLETE!")
-        print("="*80)
-        print("\nResults saved to: results/grid_search/")
-        print("Check PNG files for paper-ready visualizations.")
-        print("="*80)
-        return  # Exit after grid search
     
     # Step 1: Data Preprocessing
     if 'preprocess' in steps_to_run:
@@ -245,7 +97,7 @@ def main():
         if Path(gse_output).exists():
             preprocess_data(gse_output, output_dir='data/processed')
     
-    # Step 2: Graph Construction (now driven by parameter_grid_search)
+    # Step 2: Graph Construction (mutual kNN on PCA space)
     if 'graph' in steps_to_run:
         print("\n" + "="*80)
         print("STEP 2: GRAPH CONSTRUCTION")
@@ -255,66 +107,16 @@ def main():
         graph_config = load_config(args.config)
         preprocessing_config = graph_config.get('preprocessing', {})
         
-        # Prefer automatic similarity selection via parameter_grid_search
-        auto_similarity = graph_config.get('grid_search', {}).get('use_in_run_all', True)
-        
-        thresholds_dict = {}
-        if auto_similarity:
-            # Use grid search to pick best similarity per dataset (if possible)
-            tcga_sim = get_optimal_similarity_from_grid_search(
-                dataset_name_key='tcga_brca_data',
-                short_name='tcga',
-                config=graph_config,
-                config_path=args.config,
-                output_dir='results/grid_search'
-            )
-            if tcga_sim is not None:
-                thresholds_dict['tcga_brca_data'] = tcga_sim
-            
-            gse_sim = get_optimal_similarity_from_grid_search(
-                dataset_name_key='gse96058_data',
-                short_name='gse96058',
-                config=graph_config,
-                config_path=args.config,
-                output_dir='results/grid_search'
-            )
-            if gse_sim is not None:
-                thresholds_dict['gse96058_data'] = gse_sim
-        
-        # If auto mode is disabled or failed, fall back to config thresholds
-        if not thresholds_dict:
-            similarity_thresholds = preprocessing_config.get('similarity_thresholds', {})
-            if similarity_thresholds:
-                # Work with a copy and cast to float (handles YAML strings/decimals)
-                similarity_thresholds = {
-                    dataset: float(value)
-                    for dataset, value in similarity_thresholds.items()
-                }
-                thresholds_dict = {
-                    k: v for k, v in similarity_thresholds.items() if k != 'default'
-                }
-        
-        if thresholds_dict:
-            config_path = Path(args.config).resolve()
-            print(f"Using dataset-specific similarity thresholds (from grid search / config, {config_path}):")
-            for dataset, thresh in thresholds_dict.items():
-                print(f"  {dataset}: {thresh}")
-            construct_graphs(
-                input_dir='data/processed',
-                output_dir='data/graphs',
-                thresholds_dict=thresholds_dict,
-                use_sparse=True
-            )
-        else:
-            # Fallback to single threshold (for backwards compatibility)
-            similarity_threshold = preprocessing_config.get('similarity_threshold', 0.4)
-            print(f"Using single similarity threshold: {similarity_threshold}")
-            construct_graphs(
-                input_dir='data/processed',
-                output_dir='data/graphs',
-                threshold=similarity_threshold,
-                use_sparse=True
-            )
+        mutual_knn_params = preprocessing_config.get('mutual_knn', {})
+
+        print("Using mutual kNN graph on PCA space (no similarity threshold).")
+        construct_graphs(
+            input_dir='data/processed',
+            output_dir='data/graphs',
+            use_sparse=True,
+            mutual_knn_params=mutual_knn_params,
+            save_embedding=True,
+        )
     
     # Step 3: Clustering
     if 'cluster' in steps_to_run and not args.skip_clustering:

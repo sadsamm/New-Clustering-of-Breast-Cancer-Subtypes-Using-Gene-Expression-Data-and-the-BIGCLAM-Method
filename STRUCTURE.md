@@ -26,7 +26,7 @@ project_root/
     ├── visualization/      # Step 5: Visualizations
     ├── classifiers/        # Step 6: Classification validation
     ├── interpretation/     # Step 7: Result interpretation
-    └── analysis/           # Step 8: Cross-dataset analysis & grid search
+    └── analysis/           # Step 8: Cross-dataset analysis
 ```
 
 ## Data Preparation
@@ -91,11 +91,7 @@ These prepared files are expected to exist before running the main pipeline.
     ↓
     Cross-cohort correlations
 
-[9] src/analysis/parameter_grid_search.py (NEW!)
-    ↓
-    Grid search over parameter combinations
-    ↓
-    Paper-ready visualizations + recommendations
+[9] src/analysis/parameter_grid_search.py (removed - deprecated)
 ```
 
 ## Usage Examples
@@ -106,20 +102,6 @@ These prepared files are expected to exist before running the main pipeline.
 python run_all.py --config config/config.yml
 ```
 
-### Parameter Grid Search
-```bash
-# Test multiple parameter combinations
-python run_all.py --steps grid_search
-
-# This will:
-# - Auto-generate parameter ranges from start/end/step in config
-#   (e.g., variance: 0.5-15.0 step 0.5 = 30 values, similarity: 0.1-0.9 step 0.05 = 17 values)
-# - Test all combinations (510 per dataset: 30 × 17)
-# - Run full pipeline for each combination
-# - Generate paper-ready visualizations
-# - Output best configuration recommendation
-```
-
 ### Step-by-Step (via run_all.py - Recommended)
 ```bash
 # All steps via main script
@@ -127,9 +109,6 @@ python run_all.py --config config/config.yml
 
 # Or specific steps only
 python run_all.py --steps preprocess graph cluster evaluate
-
-# Grid search for parameter optimization
-python run_all.py --steps grid_search
 ```
 
 ### Step-by-Step (Direct Module Execution)
@@ -140,8 +119,8 @@ python -m src.preprocessing.data_preparing --config config/config.yml --dataset 
 # Step 1: Preprocess
 python -m src.preprocessing.data_preprocessing --input data/tcga_brca_data_target_added.csv
 
-# Step 2: Build graphs
-python -m src.graph.graph_construction --input_dir data/processed --threshold 0.4
+# Step 2: Build graphs (mutual kNN on PCA space; no similarity threshold)
+python -m src.graph.graph_construction --input_dir data/processed
 
 # Step 3: Cluster
 python -m src.clustering.clustering --input_dir data/graphs --max_communities 10
@@ -158,23 +137,7 @@ python -m src.classifiers.classifiers
 # Step 7: Cross-dataset
 python -m src.analysis.cross_dataset_analysis
 
-# Step 8: Grid search (parameter optimization)
-python -m src.analysis.parameter_grid_search --dataset tcga --config config/config.yml
-```
-
-### Custom Runs
-```bash
-# Only clustering and evaluation
-python run_all.py --steps preprocess graph cluster evaluate
-
-# Skip classification
-python run_all.py --skip_classification
-
-# Run only cross-dataset analysis (requires existing clusterings)
-python run_all.py --steps cross_dataset --skip_clustering
-
-# Grid search for parameter optimization
-python run_all.py --steps grid_search
+# Optional: Other analyses assume existing clusterings
 ```
 
 ## Input/Output Files
@@ -202,21 +165,18 @@ All parameters are in `config/config.yml`:
 
 ```yaml
 preprocessing:
-  variance_threshold_mode: "mean"  # Fixed mean-based filter (three-stage pipeline)
-  similarity_thresholds:
-    tcga_brca_data: 0.2  # Dataset-specific similarity thresholds
-    gse96058_data: 0.6
-    default: 0.4
-
-grid_search:  # Parameter grid search ranges (auto-generated from start/end/step)
-  tcga:
-    similarity_start: 0.1
-    similarity_end: 0.9
-    similarity_step: 0.05
-  gse96058:
-    similarity_start: 0.1
-    similarity_end: 0.9
-    similarity_step: 0.05
+  variance_threshold_mode: "mean"
+  use_umap_for_graph: true
+  umap_auto_optimize: true
+  umap_search:
+    n_neighbors: [10, 15, 30]
+    min_dist: [0.05, 0.1, 0.3]
+    knn_k: [10, 15, 20]
+  umap_graph:
+    n_neighbors: 15
+    min_dist: 0.1
+    knn_k: 15
+    metric: "euclidean"
 
 bigclam:
   max_communities: 10          # Maximum communities to search (optimal found automatically via BIC)
@@ -239,9 +199,6 @@ classifiers:
 ```bash
 # Complete pipeline (recommended - expects prepared CSV files)
 python run_all.py
-
-# Grid search for parameter optimization
-python run_all.py --steps grid_search
 
 # Individual modules via run_all.py
 python run_all.py --steps preprocess graph cluster evaluate
@@ -271,7 +228,7 @@ run_all.py
 ├── src/interpretation/interpreters.py (needs: evaluators.py output)
 └── src/analysis/
     ├── cross_dataset_analysis.py (needs: clustering.py + data_preprocessing.py output)
-    └── parameter_grid_search.py (runs full pipeline: preprocess → graph → cluster → evaluate)
+    └── parameter_grid_search.py (removed - deprecated; used similarity-based graphs)
 
 Separate data preparation:
 └── src/preprocessing/data_preparing.py (independent, creates *_target_added.csv files)
@@ -288,7 +245,7 @@ Each dataset (TCGA, GSE96058) is processed independently, so you can:
 ## Troubleshooting
 
 ### Out of Memory
-- Reduce `similarity_threshold` in graph construction
+- Reduce `mutual_knn.k` parameter in config (currently 20, try 10-15)
 - Use `--no_sparse` to disable sparse matrices (may be slower)
 - Process datasets separately
 

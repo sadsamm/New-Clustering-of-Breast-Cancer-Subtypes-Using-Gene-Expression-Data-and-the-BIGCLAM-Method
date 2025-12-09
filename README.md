@@ -33,7 +33,6 @@ This project implements a modular pipeline for clustering breast cancer subtypes
 - ✅ Rich visualizations (t-SNE, UMAP, heatmaps, confusion matrices)
 - ✅ Cross-dataset validation
 - ✅ MLP/SVM classification validation
-- ✅ Parameter grid search (144 combinations per dataset)
 - ✅ Baseline comparison (original vs BIGCLAM features)
 - ✅ Computational benchmarking (runtime and memory)
 - ✅ Data augmentation ablation study
@@ -73,9 +72,8 @@ BIGCLAM/
 │   │   └── mlp_classifier.py
 │   ├── interpretation/         # Step 7: Result interpretation
 │   │   └── interpreters.py
-│   └── analysis/               # Step 8: Cross-dataset analysis & grid search
-│       ├── cross_dataset_analysis.py
-│       └── parameter_grid_search.py  # Parameter optimization
+│   └── analysis/               # Step 8: Cross-dataset analysis
+│       └── cross_dataset_analysis.py
 └── config/
     └── config.yml             # Configuration parameters
 ```
@@ -133,31 +131,12 @@ python run_all.py --config config/config.yml
 
 The pipeline will:
 1. Preprocess TCGA-BRCA and GSE96058 (from prepared CSV files)
-2. Build similarity graphs
+2. Build mutual kNN graphs on PCA space (no similarity thresholds)
 3. Apply BIGCLAM clustering
 4. Evaluate against PAM50/Oncotree labels
 5. Generate visualizations
 6. Validate with MLP/SVM
 7. Analyze cross-dataset consistency
-
-### Parameter Grid Search
-
-Test different variance and similarity thresholds to find optimal parameters:
-
-```bash
-# Run grid search for both datasets
-python run_all.py --steps grid_search
-
-# This will:
-# - Auto-generate parameter ranges from start/end/step in config.yml
-#   (e.g., variance: 0.5-15.0 step 0.5 = 30 values, similarity: 0.1-0.9 step 0.05 = 17 values)
-# - Test all combinations (510 per dataset: 30 × 17)
-# - Run full pipeline for each combination
-# - Generate paper-ready visualizations
-# - Recommend best configuration
-```
-
-Results are saved to `results/grid_search/` with PNG visualizations.
 
 ### Run Specific Steps
 
@@ -415,13 +394,6 @@ Confusion matrices are computed across multiple runs (n=10) and averaged. Decima
 - **Correlation analysis**: Between TCGA and GSE communities
 - **Matching**: Find corresponding clusters across datasets
 - Outputs: Correlation heatmaps, dendrograms
-
-- **Grid search**: Automatically generates similarity ranges from start/end/step in `config.yml`
-- **Full pipeline evaluation**: Runs preprocessing → graph → cluster → evaluate for each similarity threshold (17 per dataset by default)
-- **Paper-ready visualizations**: Generates high-resolution PNG heatmaps and plots
-- **Automated recommendations**: Identifies best parameter configuration based on composite scoring
-- Outputs: `results/grid_search/*.png` visualizations and CSV results
-
 ### 10. `src/analysis/baseline_comparison.py`
 - **Baseline validation**: Compares classification performance on original data vs BIGCLAM-filtered data
 - **Feature sets tested**: Original data, cluster-only features, combined (original + clusters)
@@ -502,21 +474,18 @@ Edit `config/config.yml`:
 
 ```yaml
 preprocessing:
-  variance_threshold_mode: "mean"  # Fixed mean-based threshold (ignored if changed)
-  similarity_thresholds:
-    tcga_brca_data: 0.2  # Dataset-specific similarity thresholds
-    gse96058_data: 0.6
-    default: 0.4
-
-grid_search:  # Parameter grid search ranges (auto-generated from start/end/step)
-  tcga:
-    similarity_start: 0.1
-    similarity_end: 0.9
-    similarity_step: 0.05
-  gse96058:
-    similarity_start: 0.1
-    similarity_end: 0.9
-    similarity_step: 0.05
+  variance_threshold_mode: "mean"
+  use_umap_for_graph: true
+  umap_auto_optimize: true  # light sweep over UMAP params (trustworthiness + kNN overlap)
+  umap_search:
+    n_neighbors: [10, 15, 30]
+    min_dist: [0.05, 0.1, 0.3]
+    knn_k: [10, 15, 20]
+  umap_graph:
+    n_neighbors: 15
+    min_dist: 0.1
+    knn_k: 15
+    metric: "euclidean"
 
 bigclam:
   max_communities: 10          # Maximum communities to search (optimal found automatically via BIC)
@@ -524,67 +493,15 @@ bigclam:
   learning_rate: 0.08          # Adam optimizer learning rate
 
 classifiers:
-  mlp:
-    num_runs: 10
-    num_epochs: 200
-    hidden_layers: [80, 50, 20]
-  svm:
-    kernel: "rbf"
-    C: 0.1
+  default:
+    mlp:
+      num_runs: 10
+      num_epochs: 200
+      hidden_layers: [80, 50, 20]
+    svm:
+      kernel: "rbf"
+      C: 0.1
 ```
-
-### Parameter Selection Guide
-
-**Method 1: Similarity Grid Search (Recommended for Papers)**
-
-Use the grid search to test multiple parameter combinations and generate paper-ready visualizations:
-
-```bash
-# Run grid search (tests all similarity values from config)
-python run_all.py --steps grid_search
-```
-
-**What it does:**
-- Automatically generates similarity ranges from start/end/step values in config (e.g., 0.1 to 0.9 step 0.05 = 17 values)
-- Tests each similarity threshold with the fixed mean-based variance filter (17 runs per dataset)
-- Runs full pipeline (preprocess → graph → cluster → evaluate) for each combination
-- Generates comprehensive similarity profiles and summary plots
-- Recommends best configuration based on ARI, NMI, Purity, and F1 scores
-- Creates paper-ready PNG visualizations (300 DPI)
-
-Results saved to `results/grid_search/`:
-- `{dataset}_grid_search_overview.png` - Comprehensive similarity summary
-- `{dataset}_{metric}_profile.png` - Individual metric profiles
-- `{dataset}_grid_search_results.csv` - Full results table
-
-**Method 2: Sensitivity Analysis**
-
-Use the similarity-only grid search for detailed threshold analysis:
-
-```bash
-# Run similarity sweep (auto-detects processed data via config)
-python src/analysis/parameter_grid_search.py --dataset tcga
-
-# Or specify a custom range
-python src/analysis/parameter_grid_search.py --dataset tcga --similarity_range 0.1 0.2 0.3
-```
-
-**What it does:**
-- Runs preprocessing → graph → clustering → evaluation for each similarity value
-- Aggregates metrics (ARI, NMI, Purity, F1) and graph stats
-- Saves CSV + publication-grade plots in `results/grid_search/`
-
-**How to choose:**
-
-**Similarity Threshold:**
-- **Recommended range**: 0.3-0.5
-- **Ideal graph density**: 0.5-3%
-- **Must be fully connected**: Should have 1 connected component
-- **Average degree**: 2-10 connections per node is ideal
-- **Too low**: Graph too sparse, disconnected components
-- **Too high**: Graph too dense, many weak/noisy connections
-
-The script prints recommendations directly and saves detailed analysis in `results/grid_search/` with plots and CSV data.
 
 ## Output Structure
 
@@ -601,11 +518,6 @@ results/
 ├── classification/
 │   ├── svm_confusion_matrix.png
 │   └── mlp_confusion_matrix.png
-├── grid_search/              # Parameter optimization results
-│   ├── *_grid_search_overview.png
-│   ├── *_ari_profile.png
-│   ├── *_nmi_profile.png
-│   └── *_grid_search_results.csv
 ├── baseline_comparison/      # Baseline validation results
 │   ├── *_baseline_comparison.pkl
 │   └── *_baseline_comparison.csv

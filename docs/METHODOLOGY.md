@@ -8,9 +8,9 @@ Two independent breast cancer cohorts were analyzed. TCGA-BRCA (n = 1,093) inclu
 
 Expression matrices were log2(+1) transformed to approximate a variance-stabilizing distribution (log2 transformation provides variance stabilization comparable to VST for normalized count data). Genes falling below the mean cross-sample variance were excluded to reduce high-dimensional noise. Z-score normalization¹⁰ was applied per gene across samples, performed independently within each cohort to avoid information leakage.
 
-## Graph Construction from Transcriptomic Similarity
+## Graph Construction from Transcriptomic Similarity (Mutual kNN on PCA)
 
-Pairwise cosine similarity was computed between samples using normalized gene expression. Binary adjacency matrices were constructed by thresholding similarity values. Thresholds were optimized via grid search (increments of 0.01), selecting the minimum value ensuring a single connected component while preserving graph sparsity. Threshold stability was verified across ±0.05 intervals (Supplementary Figure X). All graphs were undirected and loop-free.
+Normalized expression matrices were first reduced with PCA (≤50 PCs) to denoise and standardize scale. A k-nearest-neighbor graph (k = 10–30; default 20) was computed in this PCA space using Euclidean distance. To enforce robustness and connectivity without manual similarity thresholds, edges were retained only when the neighbor relationship was mutual (i.e., \(i \in \text{kNN}(j)\) and \(j \in \text{kNN}(i)\)). The resulting mutual kNN adjacency is sparse, undirected, loop-free, and built directly on the PCA representation, eliminating the need for cosine-threshold grid search.
 
 ## Overlapping Community Detection
 

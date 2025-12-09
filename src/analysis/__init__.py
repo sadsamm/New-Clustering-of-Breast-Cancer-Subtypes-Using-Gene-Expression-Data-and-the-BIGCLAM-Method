@@ -6,12 +6,6 @@ from .cross_dataset_analysis import (
     compute_cross_dataset_correlation,
     find_matching_communities
 )
-from .parameter_grid_search import (
-    run_grid_search,
-    run_single_combination,
-    create_grid_search_visualizations,
-    clear_memory
-)
 from .comprehensive_method_comparison import (
     compare_all_methods
 )
@@ -26,10 +20,6 @@ __all__ = [
     'compute_community_centroids',
     'compute_cross_dataset_correlation',
     'find_matching_communities',
-    'run_grid_search',
-    'run_single_combination',
-    'create_grid_search_visualizations',
-    'clear_memory',
     'compare_all_methods',
     'create_summary_table',
     'generate_narrative',

@@ -1,18 +1,16 @@
 # Results Summary: TCGA
 
-BIGCLAM identified 5 distinct molecular subtypes.
+BIGCLAM identified 3 distinct molecular subtypes.
 
 
-## Cluster 0 (n=101)
+## Cluster 0 (n=162)
 
-## Cluster 1 (n=102)
+## Cluster 1 (n=186)
 
-## Cluster 2 (n=100)
+## Cluster 2 (n=184)
 
-## Cluster 3 (n=113)
-
-## Cluster 4 (n=116)
+**Enriched Signatures**: luminal_hormonal
 
 
 ## Overall Performance
-**PAM50 Alignment**: NMI=0.005, ARI=-0.003
+**PAM50 Alignment**: NMI=0.003, ARI=-0.001

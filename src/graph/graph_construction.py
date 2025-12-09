@@ -1,106 +1,83 @@
 """
-Graph Construction Module
+Graph Construction Module (Mutual kNN on PCA)
 
-Builds similarity graphs from preprocessed expression data for BIGCLAM input.
-- Computes cosine similarity between samples
-- Creates adjacency matrix based on similarity threshold
-- Memory-efficient with sparse matrices
+Builds mutual kNN graphs from preprocessed expression data for BIGCLAM input.
+- PCA dimensionality reduction (default 50 PCs)
+- Mutual kNN (default k=20) in PCA space, Euclidean distance
+- Sparse adjacency output
 """
 
 import numpy as np
-import pandas as pd
 from pathlib import Path
-import pickle
-from scipy.sparse import csr_matrix
-from sklearn.metrics.pairwise import cosine_similarity
 import gc
+from scipy.sparse import csr_matrix
+from sklearn.decomposition import PCA
+from sklearn.neighbors import NearestNeighbors
 
 
-def calculate_similarity_chunked(features, chunk_size=5000):
+def build_mutual_knn_graph(
+    expression_data,
+    pca_components=50,
+    k=20,
+    metric="euclidean",
+    use_sparse=True,
+):
     """
-    Calculate cosine similarity in chunks to reduce memory usage.
+    Build a mutual k-nearest-neighbor graph on PCA-reduced expression data.
     
     Args:
-        features: Feature matrix (N x d)
-        chunk_size: Number of samples to process at a time
+        expression_data: numpy array (n_samples x n_features)
+        pca_components: number of PCA components to keep before kNN
+        k: number of neighbors for mutual kNN (10–30 recommended)
+        metric: distance metric for kNN in PCA space
+        use_sparse: whether to return a sparse adjacency
         
     Returns:
-        Similarity matrix (N x N)
+        tuple: (adjacency_matrix, pca_embedding)
     """
-    N = features.shape[0]
-    similarity_matrix = np.zeros((N, N), dtype=np.float32)
-    
-    print(f"    Computing similarity in chunks of {chunk_size}...")
-    for i in range(0, N, chunk_size):
-        end_i = min(i + chunk_size, N)
-        for j in range(i, N, chunk_size):
-            end_j = min(j + chunk_size, N)
-            similarity_matrix[i:end_i, j:end_j] = cosine_similarity(
-                features[i:end_i], 
-                features[j:end_j]
-            )
-            # Copy upper triangle to lower triangle (symmetric)
-            if i != j:
-                similarity_matrix[j:end_j, i:end_i] = similarity_matrix[i:end_i, j:end_j].T
-            
-            if j % (chunk_size * 5) == 0:
-                print(f"      Progress: {j}/{N}")
-    
-    return similarity_matrix
-
-
-def build_similarity_graph(expression_data, threshold=0.4, use_sparse=True, chunk_size=None):
-    """
-    Build similarity graph from expression data.
-    
-    Args:
-        expression_data: numpy array of shape (n_samples, n_features)
-        threshold: Cosine similarity threshold for edges
-        use_sparse: Whether to return sparse matrix
-        chunk_size: Chunk size for similarity calculation (None for auto)
-        
-    Returns:
-        tuple: (adjacency_matrix, similarity_matrix)
-    """
-    print("\n[Graph Construction]...")
+    print("\n[Graph Construction - Mutual kNN on PCA]...")
     print(f"    Data shape: {expression_data.shape}")
-    print(f"    Similarity threshold: {threshold}")
+    print(f"    PCA components: {pca_components}, kNN k: {k}, metric: {metric}")
     
-    N, d = expression_data.shape
-    
-    # Compute similarity
-    if chunk_size is None:
-        # Auto-detect chunk size based on memory
-        chunk_size = min(5000, N)
-    
-    if N > 5000:
-        print(f"    Using chunked similarity calculation...")
-        similarity_matrix = calculate_similarity_chunked(expression_data, chunk_size)
-    else:
-        print(f"    Computing full similarity matrix...")
-        similarity_matrix = cosine_similarity(expression_data)
-    
-    # Create adjacency matrix
-    print(f"    Creating adjacency matrix from similarity...")
-    adjacency = (similarity_matrix > threshold).astype(int)
-    # Remove self-loops
-    np.fill_diagonal(adjacency, 0)
-    
-    # Convert to sparse if requested
-    if use_sparse and N > 1000:
-        adjacency_sparse = csr_matrix(adjacency)
-        print(f"    Converting to sparse matrix...")
-        n_edges = adjacency_sparse.nnz
-        density = n_edges / (N * N) * 100
-        print(f"    Edges: {n_edges:,} ({density:.2f}% density)")
-        adjacency = adjacency_sparse
-    else:
-        n_edges = (adjacency > 0).sum()
-        print(f"    Edges: {n_edges:,} ({n_edges/(N*N)*100:.2f}% density)")
+    n_samples = expression_data.shape[0]
+    if n_samples < 2:
+        raise ValueError("Not enough samples to build a graph.")
+
+    k_eff = min(k, max(1, n_samples - 1))
+    pca_n = min(pca_components, expression_data.shape[1], n_samples)
+
+    pca = PCA(n_components=pca_n, random_state=42)
+    data_pca = pca.fit_transform(expression_data)
+
+    nn = NearestNeighbors(n_neighbors=k_eff + 1, metric=metric)
+    nn.fit(data_pca)
+    _, indices = nn.kneighbors(data_pca)
+
+    rows = []
+    cols = []
+    for i in range(n_samples):
+        # skip self at position 0
+        for j in indices[i, 1:]:
+            rows.append(i)
+            cols.append(j)
+
+    data = np.ones(len(rows), dtype=np.int8)
+    directed = csr_matrix((data, (rows, cols)), shape=(n_samples, n_samples))
+    mutual = directed.multiply(directed.T)
+    mutual.setdiag(0)
+    mutual.eliminate_zeros()
+
+    if not use_sparse:
+        mutual = mutual.toarray()
+
+    n_edges = mutual.nnz if hasattr(mutual, "nnz") else (mutual > 0).sum()
+    density = n_edges / (n_samples * n_samples) * 100
+    print(f"    Edges (mutual): {n_edges:,} ({density:.2f}% density)")
     
     gc.collect()
+    return mutual, data_pca
+
     
-    return adjacency, similarity_matrix
 
 
 def save_graph_data(adjacency, output_file):
@@ -148,17 +125,21 @@ def load_graph_data(input_file):
     return adjacency
 
 
-def construct_graphs(input_dir='data/processed', output_dir='data/graphs', 
-                    threshold=None, thresholds_dict=None, use_sparse=True):
+def construct_graphs(
+    input_dir='data/processed',
+    output_dir='data/graphs',
+    use_sparse=True,
+    save_embedding=False,
+    mutual_knn_params=None,
+):
     """
     Construct graphs for all processed datasets.
     
     Args:
         input_dir: Directory containing processed data
         output_dir: Directory to save graphs
-        threshold: Single similarity threshold (used if thresholds_dict not provided)
-        thresholds_dict: Dictionary mapping dataset names to thresholds (e.g., {'tcga_brca_data': 0.2, 'gse96058_data': 0.6})
         use_sparse: Whether to use sparse matrices
+        mutual_knn_params: dict with PCA/kNN settings
         
     Returns:
         dict: Graph data for each dataset
@@ -166,6 +147,7 @@ def construct_graphs(input_dir='data/processed', output_dir='data/graphs',
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    mutual_knn_params = mutual_knn_params or {}
     
     results = {}
     
@@ -181,30 +163,25 @@ def construct_graphs(input_dir='data/processed', output_dir='data/graphs',
         dataset_name = processed_file.stem.replace('_processed', '')
         print(f"CONSTRUCTING GRAPH: {dataset_name}")
         print("="*80)
-        
-        # Determine threshold for this dataset
-        if thresholds_dict and dataset_name in thresholds_dict:
-            dataset_threshold = thresholds_dict[dataset_name]
-            print(f"Using dataset-specific threshold: {dataset_threshold}")
-        elif thresholds_dict and 'default' in thresholds_dict:
-            dataset_threshold = thresholds_dict['default']
-            print(f"Using default threshold: {dataset_threshold} (dataset '{dataset_name}' not in thresholds_dict)")
-        elif threshold is not None:
-            dataset_threshold = threshold
-            print(f"Using provided threshold: {dataset_threshold}")
-        else:
-            dataset_threshold = 0.4  # Fallback default
-            print(f"Using fallback default threshold: {dataset_threshold}")
-        
         # Load expression data
         expression_data = np.load(processed_file)
         
-        # Build graph
-        adjacency, similarity = build_similarity_graph(
+        pca_components = int(mutual_knn_params.get("pca_components", 50))
+        k_neighbors = int(mutual_knn_params.get("k", 20))
+        metric = mutual_knn_params.get("metric", "euclidean")
+
+        adjacency, embedding_final = build_mutual_knn_graph(
             expression_data, 
-            threshold=dataset_threshold,
-            use_sparse=use_sparse
+            pca_components=pca_components,
+            k=k_neighbors,
+            metric=metric,
+            use_sparse=use_sparse,
         )
+        similarity = None
+        if save_embedding:
+            emb_file = output_dir / f"{dataset_name}_pca_embedding.npy"
+            np.save(emb_file, embedding_final)
+            print(f"    Saved PCA embedding to: {emb_file}")
         
         # Save graph
         graph_file = output_dir / f"{dataset_name}_adjacency"
@@ -226,30 +203,25 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Construct similarity graphs')
     parser.add_argument('--input_dir', type=str, default='data/processed', help='Input directory')
     parser.add_argument('--output_dir', type=str, default='data/graphs', help='Output directory')
-    parser.add_argument('--threshold', type=float, default=None, help='Single similarity threshold (overrides config)')
     parser.add_argument('--config', type=str, default='config/config.yml', help='Config file for dataset-specific thresholds')
     parser.add_argument('--use_sparse', action='store_true', default=True, help='Use sparse matrices')
     parser.add_argument('--no_sparse', action='store_false', dest='use_sparse', help='Use dense matrices')
+    parser.add_argument('--pca_components', type=int, default=50, help='PCA components before kNN')
+    parser.add_argument('--k', type=int, default=20, help='k for mutual kNN')
+    parser.add_argument('--metric', type=str, default='euclidean', help='Distance metric for mutual kNN')
+    parser.add_argument('--save_embedding', action='store_true', help='Save PCA embedding as .npy alongside graphs')
     
     args = parser.parse_args()
-    
-    # Load thresholds from config if not provided
-    thresholds_dict = None
-    if args.threshold is None:
-        if Path(args.config).exists():
-            with open(args.config, 'r') as f:
-                config = yaml.safe_load(f)
-                preprocessing_config = config.get('preprocessing', {})
-                similarity_thresholds = preprocessing_config.get('similarity_thresholds', {})
-                if similarity_thresholds:
-                    thresholds_dict = similarity_thresholds
-                    print("Loaded dataset-specific thresholds from config")
     
     construct_graphs(
         args.input_dir,
         args.output_dir,
-        threshold=args.threshold,
-        thresholds_dict=thresholds_dict,
-        use_sparse=args.use_sparse
+        use_sparse=args.use_sparse,
+        save_embedding=args.save_embedding,
+        mutual_knn_params={
+            "pca_components": args.pca_components,
+            "k": args.k,
+            "metric": args.metric,
+        },
     )
 

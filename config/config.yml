@@ -24,21 +24,18 @@ preprocessing:
   correlation_threshold_mode: "mean"
   laplacian_neighbors: 5
   num_selected_features: 2000  # Final genes retained after Laplacian ranking
-  
-  # Dataset-specific similarity thresholds (optimized via grid search)
-  # These ensure fully connected graphs (required for BIGCLAM) with optimal density
-  similarity_thresholds:
-    tcga_brca_data: 0.1  # TCGA-BRCA: Optimal from grid search (similarity=0.1)
-    gse96058_data: 0.4  # GSE96058: Optimal from grid search (similarity=0.4)
-    # Default fallback if dataset not specified
-    default: 0.4
+  use_mutual_knn_for_graph: true  # Build graphs with mutual kNN on PCA space
+  mutual_knn:
+    pca_components: 50  # PCA dimensionality before kNN
+    k: 20               # k for mutual kNN (use 10–30)
+    metric: "euclidean" # Distance metric in PCA space
   
 # BIGCLAM parameters
 bigclam:
   max_communities: 10  # Maximum communities to search (model finds optimal using AIC/BIC)
   min_communities: 3  # Minimum communities to search (allows discovery of major molecular programs: Luminal, Basal, HER2)
-  iterations: 100  # Optimization iterations per community number
-  learning_rate: 0.08  # Adam optimizer learning rate
+  iterations: 3000  # Optimization iterations per community number
+  learning_rate: 0.1  # Adam optimizer learning rate
   
   # Dataset-specific model selection criterion
   # BIC (Bayesian Information Criterion): Stronger penalty for complexity, better for smaller datasets
@@ -60,17 +57,17 @@ bigclam:
   early_stopping: true  # Enable early stopping when convergence detected
   convergence_threshold: 1e-6  # Convergence threshold for early stopping
   patience: 10  # Number of iterations without improvement before stopping
-  num_restarts: 5  # Number of random restarts per community number (default for grid search consistency)
+  num_restarts: 5  # Number of random restarts per community number
   
   # Dataset-specific overrides (overrides adaptive defaults)
   dataset_specific:
     tcga_brca_data:
-      num_restarts: 5  # TCGA-BRCA: 5 restarts (same as grid search)
-      min_communities: 5  # Force 5-community solution for TCGA (matches grid search)
+      num_restarts: 5
+      min_communities: 3  # Force 5-community solution for TCGA (matches grid search)
       max_communities: 10
     gse96058_data:
-      num_restarts: 5  # GSE96058: 5 restarts (same as grid search)
-      min_communities: 4  # Force 4-community solution for GSE96058 (matches grid search)
+      num_restarts: 5
+      min_communities: 3  # Force 4-community solution for GSE96058 (matches grid search)
       max_communities: 10 # AIC used but search range is fixed to k=4
   
 # Classifier parameters - Dataset-specific configurations for fine-tuning
@@ -173,19 +170,4 @@ output:
   results_dir: "results/"
   models_dir: "models/"
   visualizations_dir: "results/"
-
-# Grid search parameters (for parameter optimization)
-# Ranges are generated automatically from start, end, and step values
-# Variance: 0.5 to 15 (step 0.5) = 30 values
-# Similarity: 0.1 to 0.9 (step 0.05) = 17 values
-# Total combinations: 30 × 17 = 510 per dataset
-grid_search:
-  tcga:
-    similarity_start: 0.1
-    similarity_end: 0.9
-    similarity_step: 0.1
-  gse96058:
-    similarity_start: 0.1
-    similarity_end: 0.9
-    similarity_step: 0.1
 

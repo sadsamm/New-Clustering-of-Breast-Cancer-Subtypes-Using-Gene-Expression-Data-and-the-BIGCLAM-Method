@@ -1,5 +1,0 @@
-Gene_set,Term,Overlap,P-value,Adjusted P-value,Old P-value,Old Adjusted P-value,Odds Ratio,Combined Score,Genes
-GO_Biological_Process_2021,positive regulation of DNA-binding transcription factor activity (GO:0051091),1/246,0.7108229973595908,0.9999885128455884,0,0,0.8103483817769532,0.276597695305975,BEX1
-GO_Biological_Process_2021,positive regulation of transcription by RNA polymerase II (GO:0045944),1/908,0.9905132303390976,0.9999885128455884,0,0,0.2115198289398951,0.0020162187910945,BEX1
-GO_Biological_Process_2021,"positive regulation of transcription, DNA-templated (GO:0045893)",1/1183,0.9977829624179696,0.9999885128455884,0,0,0.1599582970141345,0.0003550272560047779,BEX1
-GO_Biological_Process_2021,regulation of transcription by RNA polymerase II (GO:0006357),1/2206,0.9999885128455884,0.9999885128455884,0,0,0.0810600334409858,9.311544689025624e-07,BEX1

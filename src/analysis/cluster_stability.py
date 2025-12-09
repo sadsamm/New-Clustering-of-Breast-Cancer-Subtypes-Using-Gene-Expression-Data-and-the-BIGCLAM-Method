@@ -102,7 +102,7 @@ def load_data_for_stability(dataset_name, processed_dir='data/processed',
 
 
 def bootstrap_clustering_stability(X, labels_true, n_bootstrap=100,
-                                  similarity_threshold=0.5, output_dir='results/stability',
+                                  output_dir='results/stability',
                                   dataset_name=None):
     """
     Bootstrap resampling to assess cluster stability.
@@ -115,7 +115,6 @@ def bootstrap_clustering_stability(X, labels_true, n_bootstrap=100,
         X: Expression data (n_samples, n_features)
         labels_true: True labels (PAM50) for ARI calculation
         n_bootstrap: Number of bootstrap resamples
-        similarity_threshold: Similarity threshold (not used in simplified version)
         output_dir: Output directory
         dataset_name: Optional dataset name
     
